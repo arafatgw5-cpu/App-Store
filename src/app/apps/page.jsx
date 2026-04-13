@@ -10,12 +10,28 @@ export const metadata = {
   },
 };
 
-const Apps = async () => {
-  const res = await fetch("http://localhost:3000/data.json", {
-    cache: "no-store",
-  });
+// Helper function to safely fetch data
+async function getApps() {
+  try {
+    // Falls back to an absolute URL based on your environment
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+    const res = await fetch(`${baseUrl}/data.json`, {
+      cache: "no-store",
+    });
 
-  const apps = await res.json();
+    if (!res.ok) {
+      throw new Error(`Failed to fetch apps: ${res.status}`);
+    }
+
+    return await res.json();
+  } catch (error) {
+    console.error("Error fetching apps data:", error);
+    return []; // Return an empty array so the page still loads without crashing
+  }
+}
+
+const Apps = async () => {
+  const apps = await getApps();
 
   return (
     <div className="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen pb-12">
@@ -43,7 +59,7 @@ const Apps = async () => {
         </div>
 
         <p className="text-gray-500 mt-2 text-lg">
-          Discover amazing apps • 1000+ apps available
+          Discover amazing apps • {apps.length}+ apps available
         </p>
       </div>
 
@@ -53,71 +69,79 @@ const Apps = async () => {
           Trending Apps
         </h2>
 
-        <div className="grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8">
-          {apps.map((app, index) => (
-            <div
-              key={app.id}
-              className="group bg-white rounded-3xl shadow-xl overflow-hidden hover:shadow-2xl hover:-translate-y-4 transition-all duration-500 ease-out cursor-pointer"
-              style={{
-                animationDelay: `${index * 80}ms`,
-              }}
-            >
-              {/* Image with smooth zoom animation */}
-              <div className="relative overflow-hidden">
-                <Image
-                  src={app.image}
-                  alt={app.title}
-                  width={280}
-                  height={220}
-                  className="w-full h-52 object-cover transition-transform duration-700 group-hover:scale-110"
-                />
+        {apps.length === 0 ? (
+          <div className="text-center text-gray-500 py-12">
+            No apps found or data failed to load.
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8">
+            {apps.map((app, index) => (
+              <div
+                key={app.id || index}
+                className="group bg-white rounded-3xl shadow-xl overflow-hidden hover:shadow-2xl hover:-translate-y-4 transition-all duration-500 ease-out cursor-pointer"
+                style={{
+                  animationDelay: `${index * 80}ms`,
+                }}
+              >
+                {/* Image with smooth zoom animation */}
+                <div className="relative overflow-hidden">
+                  <Image
+                    src={app.image || "/placeholder-image.png"} // Added a fallback just in case
+                    alt={app.title || "App Image"}
+                    width={280}
+                    height={220}
+                    className="w-full h-52 object-cover transition-transform duration-700 group-hover:scale-110"
+                  />
 
-                {/* Subtle overlay gradient on hover */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  {/* Subtle overlay gradient on hover */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
-                {/* Rating badge floating on image */}
-                <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-md text-xs font-bold px-3 py-1 rounded-2xl shadow flex items-center gap-1">
-                  <span className="text-yellow-400">★</span>
-                  <span>{app.ratingAvg}</span>
-                </div>
-              </div>
-
-              <div className="p-5">
-                <h2 className="font-semibold text-xl line-clamp-1 group-hover:text-green-600 transition-colors">
-                  {app.title}
-                </h2>
-                <p className="text-gray-500 text-sm mt-1">{app.companyName}</p>
-
-                <div className="flex items-center justify-between mt-4 text-sm">
-                  <div className="flex items-center gap-1">
-                    <span className="text-amber-400 text-lg leading-none">
-                      ★
-                    </span>
-                    <span className="font-medium">{app.ratingAvg}</span>
-                  </div>
-                  <div className="text-gray-400 text-xs font-medium">
-                    {app.downloads} + downloads
+                  {/* Rating badge floating on image */}
+                  <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-md text-xs font-bold px-3 py-1 rounded-2xl shadow flex items-center gap-1">
+                    <span className="text-yellow-400">★</span>
+                    <span>{app.ratingAvg}</span>
                   </div>
                 </div>
 
-                <div className="mt-2 text-xs text-gray-400 flex items-center gap-1">
-                  <span className="inline-block w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-                  Size: {app.size} MB
-                </div>
+                <div className="p-5">
+                  <h2 className="font-semibold text-xl line-clamp-1 group-hover:text-green-600 transition-colors">
+                    {app.title}
+                  </h2>
+                  <p className="text-gray-500 text-sm mt-1">
+                    {app.companyName}
+                  </p>
 
-                {/* Button with press animation */}
-                <Link href={`/apps/${app.id}`} className="block mt-6">
-                  <button className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold py-4 rounded-2xl text-base shadow-lg active:scale-95 transition-all duration-200 hover:brightness-110 flex items-center justify-center gap-2">
-                    <span>Show details</span>
-                    <span className="text-xl transition-transform group-hover:translate-x-1">
-                      →
-                    </span>
-                  </button>
-                </Link>
+                  <div className="flex items-center justify-between mt-4 text-sm">
+                    <div className="flex items-center gap-1">
+                      <span className="text-amber-400 text-lg leading-none">
+                        ★
+                      </span>
+                      <span className="font-medium">{app.ratingAvg}</span>
+                    </div>
+                    <div className="text-gray-400 text-xs font-medium">
+                      {app.downloads} + downloads
+                    </div>
+                  </div>
+
+                  <div className="mt-2 text-xs text-gray-400 flex items-center gap-1">
+                    <span className="inline-block w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                    Size: {app.size} MB
+                  </div>
+
+                  {/* Button with press animation */}
+                  <Link href={`/apps/${app.id}`} className="block mt-6">
+                    <button className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold py-4 rounded-2xl text-base shadow-lg active:scale-95 transition-all duration-200 hover:brightness-110 flex items-center justify-center gap-2">
+                      <span>Show details</span>
+                      <span className="text-xl transition-transform group-hover:translate-x-1">
+                        →
+                      </span>
+                    </button>
+                  </Link>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Bottom spacing */}
